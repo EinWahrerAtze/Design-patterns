@@ -2,7 +2,4 @@
 set (CMAKE_CXX_STANDARD 20)
 project ("Patterns homework")
 add_executable (CMakeTarget main.cpp
-							units.h
-							observer.h
-							object.h
-							logger.h)
+							chain.h)
