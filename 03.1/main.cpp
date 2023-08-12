@@ -75,9 +75,9 @@ int main(int argc, const char * argv[])
 	object.Attach(&error_observer);
 	object.Attach(&fatal_error_observer);
 
-	object.Warning("WARNING: WHAT THE FUCK IS GOING ON?\n"s);
-	object.Error("ERROR: YOU ARE DUMBASS\n"s);
-	object.FatalError("FATAL ERROR: FUCK YOU\n"s);
+	object.Warning("On warning message\n"s);
+	object.Error("On error message\n"s);
+	object.FatalError("On fatal error message\n"s);
 
 	return 0;
 }
