@@ -1,53 +1,83 @@
 //
-//  main.cpp
-//  Patterns homeworks
+// main.cpp
 //
-//  Created by Denis Fedorov on 01.03.2023.
+// Created by Denis Fedorov on Thu Jul 13 2023
+//
 
-#include "units.h"
+
+#include "object.hpp"
+#include "utility.hpp"
+#include "observer.hpp"
+
+using namespace pattern;
+using namespace pattern::utility;
+
+struct PrintToFile
+{
+	PrintToFile(const std::string & path)
+	{
+		fout.open(path, std::ios_base::app | std::ios_base::out);
+
+		if (!fout.is_open())
+		{
+			throw std::runtime_error {"Could not open \"" + path + "\" for output!"s};
+		}
+	}
+
+	auto operator()(const std::string & message) -> void
+	{
+		fout << message << '\n';
+	}
+private:
+	std::ofstream fout;
+};
+	
+auto OnWarning(const Object & obj, Object::State state, const std::string & msg) -> void
+{
+	if (state == Object::State::WARNING)
+	{
+		// Logger logger {std::cout};
+		// logger.Print(msg);
+	}
+}
 
 int main(int argc, const char * argv[])
 {
-	using namespace pattern;
-	using namespace std::literals::string_literals;
+	PrintToFile to_file {"errors.txt"};
 
-	auto observer_deleter {[](observer * obs)
+	Logger log_to_file {to_file::operator()};
+	Logger log_to_screen {[](const std::string & msg)
 	{
-		std::cout << "observer removed\n";
-		delete obs;
+		std::cout << msg << '\n';
 	}};
 
-	object object;
-
-	auto sptr_warnings {std::make_shared<warning_handler>()};
-	auto sptr_errors {std::make_shared<error_handler>("errors.txt"s)};
-	auto sptr_fatal_errors {std::make_shared<fatal_error_handler>("fatal_errors.txt"s)};
-
-	object.add_observer(std::weak_ptr<observer>(sptr_warnings));
-	object.add_observer(std::weak_ptr<observer>(sptr_errors));
-	object.add_observer(std::weak_ptr<observer>(sptr_fatal_errors));
-
-	object.warning("first warning"s);
-	object.error("first error"s);
-	object.fatal_error("first fatal error"s);
-
+	Object::ObjectObserver warning_observer {OnWarning};
+	Object::ObjectObserver error_observer {[&log_to_file](const Object & obj, Object::State state, const std::string & msg)
 	{
-		std::shared_ptr<observer> sptr_warnings2 {new warning_handler, observer_deleter};
-		std::shared_ptr<observer> sptr_errors2 {new error_handler("errors2.txt"s), observer_deleter};
-		std::shared_ptr<observer> sptr_fatal_errors2 {new fatal_error_handler("fatal_errors2.txt"s), observer_deleter};
+		if (state == Object::State::ERROR)
+		{
+			log_to_file.Print(msg);
+		}
+	}};
+	Object::ObjectObserver fatal_error_observer {[&](const Object & obj, Object::State state, const std::string & msg)
+	{
+		if (state == Object::State::FATAL_ERROR)
+		{
+			log_to_file.Print(msg);
+			log_to_screen.Print(msg);
+			OnWarning(obj, state, msg);
+		}
+	}};
 
-		object.add_observer(std::weak_ptr<observer>(sptr_warnings2));
-		object.add_observer(std::weak_ptr<observer>(sptr_errors2));
-		object.add_observer(std::weak_ptr<observer>(sptr_fatal_errors2));
+	Object object;
 
-		object.warning("second warning"s);
-		object.error("second error"s);
-		object.fatal_error("second fatal error"s);
-	}
+	object.Attach(&warning_observer);
+	object.Attach(&error_observer);
+	object.Attach(&fatal_error_observer);
 
-	object.warning("third warning"s);
-	object.error("third error"s);
-	object.fatal_error("third fatal error"s);
+	object.Warning("WARNING: WHAT THE FUCK IS GOING ON?\n"s);
+	object.Error("ERROR: YOU ARE DUMBASS\n"s);
+	object.FatalError("FATAL ERROR: FUCK YOU\n"s);
 
 	return 0;
 }
